@@ -78,8 +78,100 @@ public class Cube {
 
     }
 
-    private void rotateAux(Field side, int layer) throws InterruptedException {
+    private void rotateSide(Field side, boolean rotateRight) {
+        Side sideToRotate = cubeSides[side.getVal()];
+        if (rotateRight)
+            sideToRotate.rotateRight();
+        else
+            sideToRotate.rotateLeft();
+    }
 
+    // ok
+    private void rotateFront(int layer) {
+        Field[] tmp = cubeSides[Field.TOP.getVal()].getRow(layer);
+        cubeSides[Field.TOP.getVal()].replaceRow(
+                cubeSides[Field.LEFT.getVal()].getColumn(layer),
+                layer
+        );
+        cubeSides[Field.LEFT.getVal()].replaceColumn(
+                cubeSides[Field.DOWN.getVal()].getRow(layer),
+                layer
+        );
+        cubeSides[Field.DOWN.getVal()].replaceRow(
+                cubeSides[Field.RIGHT.getVal()].getColumn(layer),
+                layer
+        );
+        cubeSides[Field.RIGHT.getVal()].replaceColumn(
+                tmp,
+                layer
+        );
+    }
+
+    private void rotateLeft(int layer) {
+        Field[] tmp = cubeSides[Field.TOP.getVal()].getColumn(layer);
+        cubeSides[Field.TOP.getVal()].replaceColumn(
+                cubeSides[Field.BACK.getVal()].getColumn(layer),
+                layer
+        );
+        cubeSides[Field.BACK.getVal()].replaceColumn(
+                cubeSides[Field.DOWN.getVal()].getColumn(layer),
+                layer
+        );
+        cubeSides[Field.DOWN.getVal()].replaceColumn(
+                cubeSides[Field.FRONT.getVal()].getColumn(layer),
+                layer
+        );
+        cubeSides[Field.FRONT.getVal()].replaceColumn(
+                tmp,
+                layer
+        );
+    }
+
+    private void rotateTop(int layer) {
+        Field[] tmp = cubeSides[Field.FRONT.getVal()].getRow(layer);
+        cubeSides[Field.FRONT.getVal()].replaceRow(
+                cubeSides[Field.RIGHT.getVal()].getRow(layer),
+                layer
+        );
+        cubeSides[Field.RIGHT.getVal()].replaceRow(
+                cubeSides[Field.BACK.getVal()].getRow(layer),
+                layer
+        );
+        cubeSides[Field.BACK.getVal()].replaceRow(
+                cubeSides[Field.LEFT.getVal()].getRow(layer),
+                layer
+        );
+        cubeSides[Field.LEFT.getVal()].replaceRow(
+                tmp,
+                layer
+        );
+    }
+
+    private void rotateAux(Field side, int layer) throws InterruptedException {
+        switch (side) {
+            case TOP:
+                rotateTop(layer);
+                if (layer == size - 1)
+                    rotateSide(Field.DOWN, false);
+                break;
+            case LEFT:
+                rotateLeft(layer);
+                if (layer == size - 1)
+                    rotateSide(Field.RIGHT, false);
+                break;
+            case FRONT:
+                rotateFront(layer);
+                if (layer == size - 1)
+                    rotateSide(Field.BACK, false);
+                break;
+            default:
+                assert (false);
+                break;
+        }
+
+        if (layer == 0) {
+            rotateSide(side, true);
+        }
     }
 
     private boolean canWrite(Field side, int layer) {
@@ -158,26 +250,12 @@ public class Cube {
         RightParameteres parameteres = new RightParameteres(side, layer, size);
 
         mutex.acquire();
-        // tutaj trzeba zrobić warunek w while'u i sprawdzać nie to, czy ktoś pisze,
-        // tylko czy ktoś zajmuje to, co nam jest potrzebne
-//        if (/* czy pisze || */ readersCounter.get() > 0) {
-//            waitingWritersCounter.incrementAndGet();
-//            mutex.release();
-//            writersQueue.acquire();
-//            waitingWritersCounter.decrementAndGet();
-//        }
 
-        // to trzeba poprawić, bo w tym momencie po wybudzeniu przejdzie na koniec kolejki, a nie powinien!
-        // mozna drugi semaphor chyba zrobić, ale wydaje się to też problematyczne
         if (readersCounter.get() > 0 || waitingWritersCounter.get() > 0 || waitingSide != null) {
             waitingWritersCounter.incrementAndGet();
             mutex.release();
             writersQueue.acquire();
         }
-//        else {
-//            /* wieszamy się na semaforze z kostki i inkrementujemy liczbę trwających procesów na danym wymiarze kostki */
-//            /* te semafory muszą być mutexami */
-//        }
 
         if (!canWrite(parameteres.side, parameteres.layer)) {
             waitingSide = parameteres.side;
@@ -187,8 +265,11 @@ public class Cube {
         }
 
         markWriting(parameteres.side, parameteres.layer);
-        /* czy pisze = true */
-        mutex.release(); // ???? okej, to ma sens, bo chwile wczesniej jakis czytelnik przekazal nam mutex
+        mutex.release();
+        if (waitingSide != null && waitingReadersCounter.get() == 0 && waitingWritersCounter.get() > 0) {
+            waitingSide = null;
+            writersQueue.release();
+        }
 
         // pisanie
         beforeRotation.accept(side, layer);
@@ -198,7 +279,6 @@ public class Cube {
         mutex.acquire();
 
         unmarkWriting(parameteres.side, parameteres.layer);
-        /* czy pisze = false */
         if (waitingSide != null && canWrite(waitingSide, waitingLayer)) {
             gettingReady.release();
         }
