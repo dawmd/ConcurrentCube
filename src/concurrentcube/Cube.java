@@ -86,48 +86,7 @@ public class Cube {
             sideToRotate.rotateLeft();
     }
 
-    // ok
-    private void rotateFront(int layer) {
-        Field[] tmp = cubeSides[Field.TOP.getVal()].getRow(layer);
-        cubeSides[Field.TOP.getVal()].replaceRow(
-                cubeSides[Field.LEFT.getVal()].getColumn(layer),
-                layer
-        );
-        cubeSides[Field.LEFT.getVal()].replaceColumn(
-                cubeSides[Field.DOWN.getVal()].getRow(layer),
-                layer
-        );
-        cubeSides[Field.DOWN.getVal()].replaceRow(
-                cubeSides[Field.RIGHT.getVal()].getColumn(layer),
-                layer
-        );
-        cubeSides[Field.RIGHT.getVal()].replaceColumn(
-                tmp,
-                layer
-        );
-    }
-
-    private void rotateLeft(int layer) {
-        Field[] tmp = cubeSides[Field.TOP.getVal()].getColumn(layer);
-        cubeSides[Field.TOP.getVal()].replaceColumn(
-                cubeSides[Field.BACK.getVal()].getColumn(layer),
-                layer
-        );
-        cubeSides[Field.BACK.getVal()].replaceColumn(
-                cubeSides[Field.DOWN.getVal()].getColumn(layer),
-                layer
-        );
-        cubeSides[Field.DOWN.getVal()].replaceColumn(
-                cubeSides[Field.FRONT.getVal()].getColumn(layer),
-                layer
-        );
-        cubeSides[Field.FRONT.getVal()].replaceColumn(
-                tmp,
-                layer
-        );
-    }
-
-    private void rotateTop(int layer) {
+    private void rotateAuxTop(int layer) {
         Field[] tmp = cubeSides[Field.FRONT.getVal()].getRow(layer);
         cubeSides[Field.FRONT.getVal()].replaceRow(
                 cubeSides[Field.RIGHT.getVal()].getRow(layer),
@@ -147,30 +106,129 @@ public class Cube {
         );
     }
 
+    private void rotateAuxLeft(int layer) {
+        Field[] tmp = cubeSides[Field.FRONT.getVal()].getColumn(layer);
+        cubeSides[Field.FRONT.getVal()].replaceColumn(
+                cubeSides[Field.TOP.getVal()].getColumn(layer),
+                layer
+        );
+        cubeSides[Field.TOP.getVal()].replaceColumn(
+                cubeSides[Field.BACK.getVal()].getColumn(size - layer - 1),
+                layer
+        );
+        cubeSides[Field.BACK.getVal()].replaceColumn(
+                cubeSides[Field.DOWN.getVal()].getColumn(layer),
+                size - layer - 1
+        );
+        cubeSides[Field.DOWN.getVal()].replaceColumn(
+                tmp,
+                layer
+        );
+    }
+
+    private void rotateAuxFront(int layer) {
+        Field[] tmp = cubeSides[Field.TOP.getVal()].getRow(layer);
+        cubeSides[Field.TOP.getVal()].replaceRow(
+                cubeSides[Field.LEFT.getVal()].getColumn(size - layer - 1),
+                layer
+        );
+        cubeSides[Field.LEFT.getVal()].replaceColumn(
+                cubeSides[Field.DOWN.getVal()].getRow(layer),
+                size - layer - 1
+        );
+        cubeSides[Field.DOWN.getVal()].replaceRow(
+                cubeSides[Field.RIGHT.getVal()].getColumn(layer),
+                layer
+        );
+        cubeSides[Field.RIGHT.getVal()].replaceColumn(
+                tmp,
+                layer
+        );
+    }
+
+    private void rotateAuxRight(int layer) {
+        Field[] tmp = cubeSides[Field.TOP.getVal()].getColumn(size - layer - 1);
+        cubeSides[Field.TOP.getVal()].replaceColumn(
+                cubeSides[Field.FRONT.getVal()].getColumn(size - layer - 1),
+                size - layer - 1
+        );
+        cubeSides[Field.FRONT.getVal()].replaceColumn(
+                cubeSides[Field.DOWN.getVal()].getColumn(size - layer - 1),
+                size - layer - 1
+        );
+        cubeSides[Field.DOWN.getVal()].replaceColumn(
+                cubeSides[Field.BACK.getVal()].getColumn(layer),
+                size - layer - 1
+        );
+        cubeSides[Field.BACK.getVal()].replaceColumn(
+                tmp,
+                layer
+        );
+    }
+
+    private void rotateAuxBack(int layer) {
+        Field[] tmp = cubeSides[Field.TOP.getVal()].getRow(size - layer - 1);
+        cubeSides[Field.TOP.getVal()].replaceRow(
+                cubeSides[Field.RIGHT.getVal()].getColumn(size - layer - 1),
+                size - layer - 1
+        );
+        cubeSides[Field.RIGHT.getVal()].replaceColumn(
+                cubeSides[Field.DOWN.getVal()].getRow(size - layer - 1),
+                size - layer - 1
+        );
+        cubeSides[Field.DOWN.getVal()].replaceRow(
+                cubeSides[Field.LEFT.getVal()].getColumn(layer),
+                size - layer - 1
+        );
+        cubeSides[Field.LEFT.getVal()].replaceColumn(
+                tmp,
+                layer
+        );
+    }
+
+    private void rotateAuxDown(int layer) {
+        Field[] tmp = cubeSides[Field.FRONT.getVal()].getRow(size - layer - 1);
+        cubeSides[Field.FRONT.getVal()].replaceRow(
+                cubeSides[Field.LEFT.getVal()].getRow(size - layer - 1),
+                size - layer - 1
+        );
+        cubeSides[Field.LEFT.getVal()].replaceRow(
+                cubeSides[Field.BACK.getVal()].getRow(size - layer - 1),
+                size - layer - 1
+        );
+        cubeSides[Field.BACK.getVal()].replaceRow(
+                cubeSides[Field.RIGHT.getVal()].getRow(size - layer - 1),
+                size - layer - 1
+        );
+        cubeSides[Field.RIGHT.getVal()].replaceRow(
+                tmp,
+                size - layer - 1
+        );
+    }
+
     private void rotateAux(Field side, int layer) throws InterruptedException {
         switch (side) {
             case TOP:
-                rotateTop(layer);
-                if (layer == size - 1)
-                    rotateSide(Field.DOWN, false);
+                rotateAuxTop(layer);
                 break;
             case LEFT:
-                rotateLeft(layer);
-                if (layer == size - 1)
-                    rotateSide(Field.RIGHT, false);
+                rotateAuxLeft(layer);
                 break;
             case FRONT:
-                rotateFront(layer);
-                if (layer == size - 1)
-                    rotateSide(Field.BACK, false);
+                rotateAuxFront(layer);
+                break;
+            case RIGHT:
+                rotateAuxRight(layer);
+                break;
+            case BACK:
+                rotateAuxBack(layer);
+                break;
+            case DOWN:
+                rotateAuxDown(layer);
                 break;
             default:
                 assert (false);
                 break;
-        }
-
-        if (layer == 0) {
-            rotateSide(side, true);
         }
     }
 
@@ -273,7 +331,7 @@ public class Cube {
 
         // pisanie
         beforeRotation.accept(side, layer);
-        rotateAux(parameteres.side, parameteres.layer);
+        rotateAux(Field.getFieldType(side), layer);
         afterRotation.accept(side, layer);
 
         mutex.acquire();

@@ -1,6 +1,5 @@
 package concurrentcube;
 
-import java.text.DateFormat;
 import java.util.Arrays;
 
 public class Side {
