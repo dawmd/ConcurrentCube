@@ -23,4 +23,8 @@ public enum Field {
 
         return Field.values()[val];
     }
+
+    public static String toString(Field field) {
+        return Integer.toString(field.getVal());
+    }
 }

@@ -1,5 +1,6 @@
 package concurrentcube;
 
+import java.text.DateFormat;
 import java.util.Arrays;
 
 public class Side {
@@ -37,11 +38,11 @@ public class Side {
             }
         }
         else {
-            Arrays.stream(fields).forEach(
-                    column -> Arrays
-                            .stream(column)
-                            .forEach(field -> field = fieldsColor)
-            );
+            for (int i = 0; i < fields.length; ++i) {
+                for (int j = 0; j < fields.length; ++j) {
+                    fields[i][j] = fieldsColor;
+                }
+            }
         }
     }
 
@@ -124,5 +125,22 @@ public class Side {
         for (int i = 0; i < length; ++i) {
             fields[i][columnIndex] = newColumn[i];
         }
+    }
+
+    @Override
+    public String toString() {
+        final int length = fields.length;
+        StringBuilder result = new StringBuilder();
+
+        for (int i = 0; i < length; ++i) {
+            for (int j = 0; j < length; ++j) {
+                result.append(Field.toString(fields[i][j]));
+            }
+            if (i < length - 1) {
+                result.append('\n');
+            }
+        }
+
+        return result.toString();
     }
 }

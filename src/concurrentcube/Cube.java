@@ -291,7 +291,14 @@ public class Cube {
     }
 
     private String readCube() {
-        return "";
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < numberOfSides; ++i) {
+            result.append(cubeSides[i].toString());
+            if (i < numberOfSides - 1) {
+                result.append('\n');
+            }
+        }
+        return result.toString();
     }
 
     // czytelnik
