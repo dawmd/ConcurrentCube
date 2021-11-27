@@ -104,6 +104,13 @@ public class Cube {
                 tmp,
                 layer
         );
+
+        if (layer == 0) {
+            rotateSide(Field.TOP, true);
+        }
+        else if (layer == size - 1) {
+            rotateSide(Field.DOWN, false);
+        }
     }
 
     private void rotateAuxLeft(int layer) {
@@ -124,6 +131,13 @@ public class Cube {
                 tmp,
                 layer
         );
+
+        if (layer == 0) {
+            rotateSide(Field.LEFT, true);
+        }
+        else if (layer == size - 1) {
+            rotateSide(Field.RIGHT, false);
+        }
     }
 
     private void rotateAuxFront(int layer) {
@@ -144,6 +158,13 @@ public class Cube {
                 tmp,
                 layer
         );
+
+        if (layer == 0) {
+            rotateSide(Field.FRONT, true);
+        }
+        else if (layer == size - 1) {
+            rotateSide(Field.BACK, false);
+        }
     }
 
     private void rotateAuxRight(int layer) {
@@ -164,6 +185,13 @@ public class Cube {
                 tmp,
                 layer
         );
+
+        if (layer == 0) {
+            rotateSide(Field.RIGHT, true);
+        }
+        else if (layer == size - 1) {
+            rotateSide(Field.LEFT, false);
+        }
     }
 
     private void rotateAuxBack(int layer) {
@@ -184,6 +212,13 @@ public class Cube {
                 tmp,
                 layer
         );
+
+        if (layer == 0) {
+            rotateSide(Field.BACK, true);
+        }
+        else if (layer == size - 1) {
+            rotateSide(Field.FRONT, false);
+        }
     }
 
     private void rotateAuxDown(int layer) {
@@ -204,6 +239,13 @@ public class Cube {
                 tmp,
                 size - layer - 1
         );
+
+        if (layer == 0) {
+            rotateSide(Field.DOWN, true);
+        }
+        else if (layer == size - 1) {
+            rotateSide(Field.TOP, false);
+        }
     }
 
     private void rotateAux(Field side, int layer) {
