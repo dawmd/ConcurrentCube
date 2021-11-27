@@ -86,6 +86,7 @@ public class Cube {
             sideToRotate.rotateLeft();
     }
 
+    // ok?
     private void rotateAuxTop(int layer) {
         Field[] tmp = cubeSides[Field.FRONT.getVal()].getRow(layer);
         cubeSides[Field.FRONT.getVal()].replaceRow(
@@ -113,21 +114,22 @@ public class Cube {
         }
     }
 
+    // ok
     private void rotateAuxLeft(int layer) {
-        Field[] tmp = cubeSides[Field.FRONT.getVal()].getColumn(layer);
-        cubeSides[Field.FRONT.getVal()].replaceColumn(
-                cubeSides[Field.TOP.getVal()].getColumn(layer),
-                layer
-        );
+        Field[] tmp = cubeSides[Field.TOP.getVal()].getColumn(layer);
         cubeSides[Field.TOP.getVal()].replaceColumn(
-                cubeSides[Field.BACK.getVal()].getColumn(size - layer - 1),
+                cubeSides[Field.BACK.getVal()].getReversedColumn(size - layer - 1),
                 layer
         );
         cubeSides[Field.BACK.getVal()].replaceColumn(
-                cubeSides[Field.DOWN.getVal()].getColumn(layer),
+                cubeSides[Field.DOWN.getVal()].getReversedColumn(layer),
                 size - layer - 1
         );
         cubeSides[Field.DOWN.getVal()].replaceColumn(
+                cubeSides[Field.FRONT.getVal()].getColumn(layer),
+                layer
+        );
+        cubeSides[Field.FRONT.getVal()].replaceColumn(
                 tmp,
                 layer
         );
@@ -140,18 +142,19 @@ public class Cube {
         }
     }
 
+    // ok
     private void rotateAuxFront(int layer) {
-        Field[] tmp = cubeSides[Field.TOP.getVal()].getRow(layer);
+        Field[] tmp = cubeSides[Field.TOP.getVal()].getRow(size - layer - 1);
         cubeSides[Field.TOP.getVal()].replaceRow(
-                cubeSides[Field.LEFT.getVal()].getColumn(size - layer - 1),
-                layer
+                cubeSides[Field.LEFT.getVal()].getReversedColumn(size - layer - 1),
+                size - layer - 1
         );
         cubeSides[Field.LEFT.getVal()].replaceColumn(
                 cubeSides[Field.DOWN.getVal()].getRow(layer),
                 size - layer - 1
         );
         cubeSides[Field.DOWN.getVal()].replaceRow(
-                cubeSides[Field.RIGHT.getVal()].getColumn(layer),
+                cubeSides[Field.RIGHT.getVal()].getReversedColumn(layer),
                 layer
         );
         cubeSides[Field.RIGHT.getVal()].replaceColumn(
@@ -167,8 +170,9 @@ public class Cube {
         }
     }
 
+    // ok
     private void rotateAuxRight(int layer) {
-        Field[] tmp = cubeSides[Field.TOP.getVal()].getColumn(size - layer - 1);
+        Field[] tmp = cubeSides[Field.TOP.getVal()].getReversedColumn(size - layer - 1);
         cubeSides[Field.TOP.getVal()].replaceColumn(
                 cubeSides[Field.FRONT.getVal()].getColumn(size - layer - 1),
                 size - layer - 1
@@ -178,7 +182,7 @@ public class Cube {
                 size - layer - 1
         );
         cubeSides[Field.DOWN.getVal()].replaceColumn(
-                cubeSides[Field.BACK.getVal()].getColumn(layer),
+                cubeSides[Field.BACK.getVal()].getReversedColumn(layer),
                 size - layer - 1
         );
         cubeSides[Field.BACK.getVal()].replaceColumn(
@@ -194,14 +198,15 @@ public class Cube {
         }
     }
 
+    // ok
     private void rotateAuxBack(int layer) {
-        Field[] tmp = cubeSides[Field.TOP.getVal()].getRow(size - layer - 1);
+        Field[] tmp = cubeSides[Field.TOP.getVal()].getReversedRow(layer);
         cubeSides[Field.TOP.getVal()].replaceRow(
                 cubeSides[Field.RIGHT.getVal()].getColumn(size - layer - 1),
-                size - layer - 1
+                layer
         );
         cubeSides[Field.RIGHT.getVal()].replaceColumn(
-                cubeSides[Field.DOWN.getVal()].getRow(size - layer - 1),
+                cubeSides[Field.DOWN.getVal()].getReversedRow(size - layer - 1),
                 size - layer - 1
         );
         cubeSides[Field.DOWN.getVal()].replaceRow(
@@ -221,6 +226,7 @@ public class Cube {
         }
     }
 
+    // ok?
     private void rotateAuxDown(int layer) {
         Field[] tmp = cubeSides[Field.FRONT.getVal()].getRow(size - layer - 1);
         cubeSides[Field.FRONT.getVal()].replaceRow(
@@ -349,19 +355,23 @@ public class Cube {
 
         RightParameteres parameteres = new RightParameteres(side, layer, size);
 
-        mutex.acquire();
+        if (Thread.interrupted()) {
+            throw new InterruptedException();
+        }
+
+        mutex.acquireUninterruptibly();
 
         if (readersCounter.get() > 0 || waitingWritersCounter.get() > 0 || waitingSide != null) {
             waitingWritersCounter.incrementAndGet();
             mutex.release();
-            writersQueue.acquire();
+            writersQueue.acquireUninterruptibly();
         }
 
         if (!canWrite(parameteres.side, parameteres.layer)) {
             waitingSide = parameteres.side;
             waitingLayer = parameteres.layer;
             mutex.release();
-            gettingReady.acquire();
+            gettingReady.acquireUninterruptibly();
         }
 
         markWriting(parameteres.side, parameteres.layer);
@@ -380,7 +390,7 @@ public class Cube {
         rotateAux(Field.getFieldType(side), layer);
         afterRotation.accept(side, layer);
 
-        mutex.acquire();
+        mutex.acquireUninterruptibly();
 
         unmarkWriting(parameteres.side, parameteres.layer);
         if (waitingSide != null && canWrite(waitingSide, waitingLayer)) {
@@ -402,21 +412,27 @@ public class Cube {
         StringBuilder result = new StringBuilder();
         for (int i = 0; i < numberOfSides; ++i) {
             result.append(cubeSides[i].toString());
-            if (i < numberOfSides - 1) {
-                result.append('\n');
-            }
         }
         return result.toString();
     }
 
     // czytelnik
     public String show() throws InterruptedException {
+        if (Thread.interrupted()) {
+            throw new InterruptedException();
+        }
         // pisarze i czytelnicy
-        mutex.acquire();
+        mutex.acquireUninterruptibly();
         if (waitingWritersCounter.get() > 0) {
             waitingReadersCounter.incrementAndGet();
+            if (Thread.interrupted()) {
+                waitingReadersCounter.decrementAndGet();
+                mutex.release();
+                throw new InterruptedException();
+            }
             mutex.release();
-            readersQueue.acquire();
+
+            readersQueue.acquireUninterruptibly();
             waitingReadersCounter.decrementAndGet();
             readersCounter.incrementAndGet();
             if (waitingReadersCounter.get() > 0) {
@@ -431,16 +447,15 @@ public class Cube {
             mutex.release();
         }
 
-        if (Thread.interrupted()) {
-            throw new InterruptedException();
+        String result = "";
+        if (!Thread.interrupted()) {
+            // reading
+            beforeShowing.run();
+            result = readCube();
+            afterShowing.run();
         }
 
-        // reading
-        beforeShowing.run();
-        String result = readCube();
-        afterShowing.run();
-
-        mutex.acquire();
+        mutex.acquireUninterruptibly();
         readersCounter.decrementAndGet();
         if (readersCounter.get() == 0) {
             if (writersCounter.get() > 0) {
@@ -450,7 +465,6 @@ public class Cube {
                 mutex.release();
             }
         }
-        mutex.release();
 
         if (Thread.interrupted()) {
             throw new InterruptedException();

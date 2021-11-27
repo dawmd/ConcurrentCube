@@ -13,36 +13,36 @@ public class Side {
     }
 
     private void colorSide(Field fieldsColor) {
-        if (fields.length > 100) {
-            Thread[] threads = new Thread[fields.length];
-
-            for (int i = 0; i < fields.length; ++i) {
-                // this might be a bit risky, but afaik,
-                // this creates a REFERENCE to the original array,
-                // so the changes made on it should also affect the original one
-                Field[] fieldsTmp = fields[i];
-                threads[i] = new Thread(
-                        () -> Arrays.stream(fieldsTmp)
-                                .forEach(field -> field = fieldsColor)
-                );
-                threads[i].start();
-            }
-
-            for (Thread thread : threads) {
-                try {
-                    thread.join();
-                } catch (InterruptedException e) {
-                    System.err.println("error while coloring in the constructor");
-                }
-            }
-        }
-        else {
+//        if (fields.length > 100) {
+//            Thread[] threads = new Thread[fields.length];
+//
+//            for (int i = 0; i < fields.length; ++i) {
+//                // this might be a bit risky, but afaik,
+//                // this creates a REFERENCE to the original array,
+//                // so the changes made on it should also affect the original one
+//                Field[] fieldsTmp = fields[i];
+//                threads[i] = new Thread(
+//                        () -> Arrays.stream(fieldsTmp)
+//                                .forEach(field -> field = fieldsColor)
+//                );
+//                threads[i].start();
+//            }
+//
+//            for (Thread thread : threads) {
+//                try {
+//                    thread.join();
+//                } catch (InterruptedException e) {
+//                    System.err.println("error while coloring in the constructor");
+//                }
+//            }
+//        }
+//        else {
             for (int i = 0; i < fields.length; ++i) {
                 for (int j = 0; j < fields.length; ++j) {
                     fields[i][j] = fieldsColor;
                 }
             }
-        }
+//        }
     }
 
     private void transpose() {
@@ -95,12 +95,16 @@ public class Side {
     }
 
     public Field[] getRow(int rowIndex) {
+        // a moze po prostu return fields[rowIndex]?
+        return fields[rowIndex].clone();
+    }
+
+    public Field[] getReversedRow(int rowIndex) {
         final int length = fields.length;
         Field[] result = new Field[length];
-
-        System.arraycopy(fields[rowIndex], 0, result, 0, length);
-        // a może po prostu zwracać referencję?
-
+        for (int i = 0; i < length; ++i) {
+            result[i] = fields[rowIndex][length - i - 1];
+        }
         return result;
     }
 
@@ -110,6 +114,17 @@ public class Side {
 
         for (int i = 0; i < length; ++i) {
             result[i] = fields[i][columnIndex];
+        }
+
+        return result;
+    }
+
+    public Field[] getReversedColumn(int columnIndex) {
+        final int length = fields.length;
+        Field[] result = new Field[length];
+
+        for (int i = 0; i < length; ++i) {
+            result[i] = fields[length - i - 1][columnIndex];
         }
 
         return result;
@@ -131,12 +146,9 @@ public class Side {
         final int length = fields.length;
         StringBuilder result = new StringBuilder();
 
-        for (int i = 0; i < length; ++i) {
+        for (Field[] row : fields) {
             for (int j = 0; j < length; ++j) {
-                result.append(Field.toString(fields[i][j]));
-            }
-            if (i < length - 1) {
-                result.append('\n');
+                result.append(Field.toString(row[j]));
             }
         }
 
