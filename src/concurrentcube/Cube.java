@@ -206,7 +206,7 @@ public class Cube {
         );
     }
 
-    private void rotateAux(Field side, int layer) throws InterruptedException {
+    private void rotateAux(Field side, int layer) {
         switch (side) {
             case TOP:
                 rotateAuxTop(layer);
@@ -329,6 +329,10 @@ public class Cube {
             writersQueue.release();
         }
 
+        if (Thread.interrupted()) {
+            throw new InterruptedException();
+        }
+
         // pisanie
         beforeRotation.accept(side, layer);
         rotateAux(Field.getFieldType(side), layer);
@@ -345,6 +349,10 @@ public class Cube {
         }
         else {
             mutex.release();
+        }
+
+        if (Thread.interrupted()) {
+            throw new InterruptedException();
         }
     }
 
@@ -381,6 +389,10 @@ public class Cube {
             mutex.release();
         }
 
+        if (Thread.interrupted()) {
+            throw new InterruptedException();
+        }
+
         // reading
         beforeShowing.run();
         String result = readCube();
@@ -397,6 +409,10 @@ public class Cube {
             }
         }
         mutex.release();
+
+        if (Thread.interrupted()) {
+            throw new InterruptedException();
+        }
 
         return result;
     }
