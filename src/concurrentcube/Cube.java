@@ -396,6 +396,9 @@ public class Cube {
             gettingReady.acquireUninterruptibly();
             --writersGettingReady;
 
+
+            // ogarnac to, bo moze byc tak, ze ktos czeka, a nikt go nie obudzi, jak ten wyjdzie
+            // i w ogole sprawdzic, czy zawsze wpuszczamy maksymalna liczbe watkow
             if (Thread.interrupted()) {
                 if (writersGettingReady == 0 && waitingReadersCounter > 0) {
                     currentDimension = null;
@@ -501,7 +504,7 @@ public class Cube {
         }
         // pisarze i czytelnicy
         mutex.acquireUninterruptibly();
-        if (waitingWritersCounter > 0) {
+        if (waitingWritersCounter > 0 || writersGettingReady > 0) {
             ++waitingReadersCounter;
             if (Thread.interrupted()) {
                 --waitingReadersCounter;
