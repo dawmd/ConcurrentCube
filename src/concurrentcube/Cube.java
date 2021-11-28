@@ -354,7 +354,9 @@ public class Cube {
             } catch (InterruptedException e) {
                 --waitingWritersCounter;
                 // co jeszcze????
+                throw e;
             }
+
             mutex.acquireUninterruptibly();
             --waitingWritersCounter;
             if (waitingWritersCounter > 0) {
@@ -372,6 +374,7 @@ public class Cube {
                 --dimensions.get(parameteres.side).waitingCount;
                 --writersGettingReady;
                 // co jeszcze????
+                throw e;
             }
             --dimensions.get(parameteres.side).waitingCount;
             --writersGettingReady;
@@ -398,6 +401,7 @@ public class Cube {
         } catch (InterruptedException e) {
             --writersCounter;
             // co jeszcze??
+            throw e;
         }
 
 
@@ -467,7 +471,9 @@ public class Cube {
                 readersQueue.acquire();
             } catch (InterruptedException e) {
                 --waitingReadersCounter;
+                mutex.release();
                 // co jeszcze???
+                throw e;
             }
             --waitingReadersCounter;
             ++readersCounter;
