@@ -349,7 +349,12 @@ public class Cube {
             ++waitingWritersCounter;
 
             mutex.release();
-            writersQueue.acquireUninterruptibly();
+            try {
+                writersQueue.acquire();
+            } catch (InterruptedException e) {
+                --waitingWritersCounter;
+                // co jeszcze????
+            }
             mutex.acquireUninterruptibly();
             --waitingWritersCounter;
             if (waitingWritersCounter > 0) {
@@ -361,7 +366,13 @@ public class Cube {
         if (shouldWait(parameteres.side, parameteres.layer)) {
             ++dimensions.get(parameteres.side).waitingCount;
             mutex.release();
-            dimensions.get(parameteres.side).waitingQueue.acquireUninterruptibly();
+            try {
+                dimensions.get(parameteres.side).waitingQueue.acquire();
+            } catch (InterruptedException e) {
+                --dimensions.get(parameteres.side).waitingCount;
+                --writersGettingReady;
+                // co jeszcze????
+            }
             --dimensions.get(parameteres.side).waitingCount;
             --writersGettingReady;
             ++writersCounter;
@@ -382,16 +393,12 @@ public class Cube {
             mutex.release();
         }
 
-//        System.out.println("(Before) Diagnostic information:\n"
-//                + "Waiting outdoor count: " + waitingWritersCounter
-//                + "\nGetting ready count: " + writersGettingReady
-//                + "\nWriters count: " + writersCounter
-//                + "\nReaders waiting count: " + waitingReadersCounter
-//                + "\nReaders reading: " + readersCounter
-//                + "\nCurrent dimension: " + (currentDimension == null ? "null" : currentDimension.getVal())
-//                + "\nWriters queue size: " + waitingLayers.size() + "\n\n");
-
-        dimensions.get(parameteres.side).blocked[parameteres.layer].acquireUninterruptibly();
+        try {
+            dimensions.get(parameteres.side).blocked[parameteres.layer].acquire();
+        } catch (InterruptedException e) {
+            --writersCounter;
+            // co jeszcze??
+        }
 
 
         // SK
@@ -401,15 +408,6 @@ public class Cube {
 
 
         mutex.acquireUninterruptibly();
-
-//        System.out.println("(Before) Diagnostic information:\n"
-//                + "Waiting outdoor count: " + waitingWritersCounter
-//                + "\nGetting ready count: " + writersGettingReady
-//                + "\nWriters count: " + writersCounter
-//                + "\nReaders waiting count: " + waitingReadersCounter
-//                + "\nReaders reading: " + readersCounter
-//                + "\nCurrent dimension: " + (currentDimension == null ? "null" : currentDimension.getVal())
-//                + "\nWriters queue size: " + waitingLayers.size() + "\n\n");
 
         --writersCounter;
         dimensions.get(parameteres.side).blocked[parameteres.layer].release();
@@ -443,6 +441,10 @@ public class Cube {
             mutex.release();
         }
 
+        if (Thread.interrupted()) {
+            throw new InterruptedException();
+        }
+
     }
 
     private String readCube() {
@@ -461,7 +463,12 @@ public class Cube {
             ++waitingReadersCounter;
             mutex.release();
 
-            readersQueue.acquireUninterruptibly();
+            try {
+                readersQueue.acquire();
+            } catch (InterruptedException e) {
+                --waitingReadersCounter;
+                // co jeszcze???
+            }
             --waitingReadersCounter;
             ++readersCounter;
             if (waitingReadersCounter > 0) {
@@ -476,23 +483,24 @@ public class Cube {
             mutex.release();
         }
 
+
         // SK
         // reading
         beforeShowing.run();
         String result = readCube();
         afterShowing.run();
 
+
         mutex.acquireUninterruptibly();
         --readersCounter;
 
-        if (readersCounter == 0) {
-            if (waitingWritersCounter > 0) {
-                writersQueue.release();
-                mutex.release();
-            }
-            else {
-                mutex.release();
-            }
+        if (readersCounter == 0 && waitingWritersCounter > 0) {
+            writersQueue.release();
+        }
+        mutex.release();
+
+        if (Thread.interrupted()) {
+            throw new InterruptedException();
         }
 
         return result;
