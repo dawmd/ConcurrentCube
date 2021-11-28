@@ -1,4 +1,3 @@
 *
-!src/
-!Tests/
+!*.java
 !.gitignore
