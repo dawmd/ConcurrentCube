@@ -1,6 +1,5 @@
 package concurrentcube;
 
-import java.util.Arrays;
 
 public class Side {
     private Field[][] fields;
@@ -13,36 +12,11 @@ public class Side {
     }
 
     private void colorSide(Field fieldsColor) {
-//        if (fields.length > 100) {
-//            Thread[] threads = new Thread[fields.length];
-//
-//            for (int i = 0; i < fields.length; ++i) {
-//                // this might be a bit risky, but afaik,
-//                // this creates a REFERENCE to the original array,
-//                // so the changes made on it should also affect the original one
-//                Field[] fieldsTmp = fields[i];
-//                threads[i] = new Thread(
-//                        () -> Arrays.stream(fieldsTmp)
-//                                .forEach(field -> field = fieldsColor)
-//                );
-//                threads[i].start();
-//            }
-//
-//            for (Thread thread : threads) {
-//                try {
-//                    thread.join();
-//                } catch (InterruptedException e) {
-//                    System.err.println("error while coloring in the constructor");
-//                }
-//            }
-//        }
-//        else {
-            for (int i = 0; i < fields.length; ++i) {
-                for (int j = 0; j < fields.length; ++j) {
-                    fields[i][j] = fieldsColor;
-                }
+        for (int i = 0; i < fields.length; ++i) {
+            for (int j = 0; j < fields.length; ++j) {
+                fields[i][j] = fieldsColor;
             }
-//        }
+        }
     }
 
     private void transpose() {

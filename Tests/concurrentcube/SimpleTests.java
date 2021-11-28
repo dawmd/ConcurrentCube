@@ -166,7 +166,7 @@ class SimpleTests {
 
         Cube cube = new Cube(cubeSize, cons, cons, run, run);
 
-        concurrentAux(cube, cubeSize, 1000, 11);
+        concurrentAux(cube, cubeSize, 1000, 250);
     }
 
     @Test
@@ -345,6 +345,9 @@ class SimpleTests {
         }
         for (int i = 0; i < 6; ++i) {
             if (colorCount[i] != cubeSize * cubeSize) {
+                for (int j = 0; j < 6; ++j) {
+                    System.err.println("Color " + j + ": " + colorCount[j] + ", should be: " + cubeSize * cubeSize);
+                }
                 fail();
             }
         }
@@ -380,7 +383,11 @@ class SimpleTests {
         }
 
         for (int i = 0; i < checkCount; ++i) {
-            checkIfCorrect(cubeSize, cube.show());
+            try {
+                checkIfCorrect(cubeSize, cube.show());
+            } catch (InterruptedException ignored) {
+
+            }
         }
 
         for (int i = 0; i < testCount; ++i) {
@@ -413,29 +420,82 @@ class SimpleTests {
         );
     }
 
+    private void randomInterruption(int cubeSize, BiConsumer<Integer, Integer> beforeRot, BiConsumer<Integer, Integer> afterRot,
+                             Runnable beforeShow, Runnable afterShow, int testCount, int checkCount) throws Exception {
+
+        Cube cube = new Cube(cubeSize, beforeRot, afterRot, beforeShow, afterShow);
+        Random rand = new Random();
+        Thread[] threads = new Thread[testCount];
+
+        boolean[] interruptedThreads = new boolean[testCount];
+        for (int i = 0; i < testCount; ++i) {
+            interruptedThreads[i] = false;
+        }
+
+        for (int i = 0; i < testCount; ++i) {
+            if (rand.nextBoolean()) {
+                threads[i] = new Thread(() -> {
+                    try {
+                        cube.rotate(rand.nextInt(6), rand.nextInt(cubeSize));
+                    } catch (InterruptedException e) {
+                        System.err.println("GOT EXCEPTION!");
+                    }
+                });
+            }
+            else {
+                threads[i] = new Thread(() -> {
+                    try {
+                        cube.show();
+                    } catch (InterruptedException e) {
+                        System.err.println("GOT EXCEPTION IN SHOW!");
+                    }
+                });
+            }
+            threads[i].start();
+        }
+
+        for (int i = 0; i < checkCount; ++i) {
+            if (i % 2 == 0) {
+                int threadIndex = rand.nextInt(testCount);
+                if (!interruptedThreads[threadIndex]) {
+//                    threads[threadIndex].interrupt();
+                    interruptedThreads[threadIndex] = true;
+                }
+            }
+            else {
+                checkIfCorrect(cubeSize, cube.show());
+            }
+        }
+
+        for (int i = 0; i < testCount; ++i) {
+            threads[i].join();
+        }
+    }
+
     @Test
     public void test16() throws Exception {
-
+        randomInterruption(3, (p, q) -> {}, (p, q) -> {}, () -> {}, () -> {}, 10, 10);
     }
 
     @Test
     public void test17() throws Exception {
-
+        for (int i = 0; i < 10; ++i)
+        randomInterruption(30, (p, q) -> {}, (p, q) -> {}, () -> {}, () -> {}, 100, 10);
     }
 
     @Test
     public void test18() throws Exception {
-
+        randomInterruption(100, (p, q) -> {}, (p, q) -> {}, () -> {}, () -> {}, 10000, 1000);
     }
 
     @Test
     public void test19() throws Exception {
-
+        randomInterruption(2, (p, q) -> {}, (p, q) -> {}, () -> {}, () -> {}, 100000, 100);
     }
 
     @Test
     public void test20() throws Exception {
-
+        randomInterruption(1, (p, q) -> {}, (p, q) -> {}, () -> {}, () -> {}, 100000, 10000);
     }
 
 }
