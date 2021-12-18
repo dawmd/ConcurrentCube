@@ -77,10 +77,9 @@ public class Cube {
     private int writersCounter = 0;
     private int waitingReadersCounter = 0;
     private int waitingWritersCounter = 0;
-    private int writersGettingReady = 0;
 
     private final Semaphore readersQueue = new Semaphore(0, true);
-    private final Semaphore writersQueue = new Semaphore(0, true);
+    private final Semaphore mainWritersQueue = new Semaphore(0, true);
     private final Semaphore mutex = new Semaphore(1, true);
 
     private Field currentDimension = null;
@@ -129,7 +128,6 @@ public class Cube {
             sideToRotate.rotateLeft();
     }
 
-    // ok?
     private void rotateAuxTop(int layer) {
         Field[] tmp = cubeSides[Field.FRONT.getVal()].getRow(layer);
         cubeSides[Field.FRONT.getVal()].replaceRow(
@@ -157,7 +155,6 @@ public class Cube {
         }
     }
 
-    // ok
     private void rotateAuxLeft(int layer) {
         Field[] tmp = cubeSides[Field.TOP.getVal()].getColumn(layer);
         cubeSides[Field.TOP.getVal()].replaceColumn(
@@ -185,7 +182,6 @@ public class Cube {
         }
     }
 
-    // ok
     private void rotateAuxFront(int layer) {
         Field[] tmp = cubeSides[Field.TOP.getVal()].getRow(size - layer - 1);
         cubeSides[Field.TOP.getVal()].replaceRow(
@@ -213,7 +209,6 @@ public class Cube {
         }
     }
 
-    // ok
     private void rotateAuxRight(int layer) {
         Field[] tmp = cubeSides[Field.TOP.getVal()].getReversedColumn(size - layer - 1);
         cubeSides[Field.TOP.getVal()].replaceColumn(
@@ -241,7 +236,6 @@ public class Cube {
         }
     }
 
-    // ok
     private void rotateAuxBack(int layer) {
         Field[] tmp = cubeSides[Field.TOP.getVal()].getReversedRow(layer);
         cubeSides[Field.TOP.getVal()].replaceRow(
@@ -269,7 +263,6 @@ public class Cube {
         }
     }
 
-    // ok?
     private void rotateAuxDown(int layer) {
         Field[] tmp = cubeSides[Field.FRONT.getVal()].getRow(size - layer - 1);
         cubeSides[Field.FRONT.getVal()].replaceRow(
@@ -323,16 +316,8 @@ public class Cube {
         }
     }
 
-    private boolean shouldWait(Field side, int layer) {
-        if (currentDimension != null && !currentDimension.equals(side)) {
-            return true;
-        }
-        for (Field key : dimensions.keySet()) {
-            if (!key.equals(side) && dimensions.get(key).waitingCount > 0) {
-                return true;
-            }
-        }
-        return false;
+    private boolean shouldWait(Field side) {
+        return currentDimension != null && !side.equals(currentDimension);
     }
 
     // Writer
@@ -341,155 +326,57 @@ public class Cube {
         RightParameteres parameteres = new RightParameteres(side, layer, size);
         Dimension myDimension = dimensions.get(parameteres.side);
 
-        // Letting readers read
         mutex.acquireUninterruptibly();
-        if (readersCounter > 0 || waitingReadersCounter > 0) {
-            ++waitingWritersCounter;
-
-            mutex.release();
-            try {
-                writersQueue.acquire();
-            } catch (InterruptedException e) {
-                mutex.acquireUninterruptibly();
-                --waitingWritersCounter;
-
-                if (waitingWritersCounter > 0) {
-                    mutex.release();
-                    writersQueue.release();
-                }
-                else if (!(writersGettingReady > 0 || writersCounter > 0) && waitingReadersCounter > 0) {
-                    readersQueue.release();
-                }
-                else {
-                    mutex.release();
-                }
-
-                throw e;
-            }
-
-            mutex.acquireUninterruptibly();
-            --waitingWritersCounter;
-            if (waitingWritersCounter > 0) {
-                writersQueue.release();
-            }
-        }
-
-        // Readers have finished reading. Checking if can start writing.
-        // The thread WILL start writing at this stage unless interrupted
-        ++writersGettingReady;
-        if (shouldWait(parameteres.side, parameteres.layer)) {
+        ++waitingWritersCounter;
+        if (readersCounter > 0 || waitingReadersCounter > 0 || shouldWait(parameteres.side)) {
             ++myDimension.waitingCount;
-            mutex.release();
-            try {
-                dimensions.get(parameteres.side).waitingQueue.acquire();
-            } catch (InterruptedException e) {
-                --myDimension.waitingCount;
-                --writersGettingReady;
-
-                if (myDimension.waitingCount > 0) {
-                    myDimension.waitingQueue.release();
-                }
-                else {
-                    Dimension dimToRelease = null;
-                    for (Dimension dim : dimensions.values()) {
-                        if (dim.waitingCount > 0) {
-                            dimToRelease = dim;
-                            break;
-                        }
-                    }
-
-                    if (dimToRelease != null) {
-                        dimToRelease.waitingQueue.release();
-                    }
-                    else if (waitingReadersCounter > 0) {
-                        readersQueue.release();
-                    }
-                    else {
-                        mutex.release();
-                    }
-                }
-
-                throw e;
+            if (myDimension.waitingCount == 1) {
+                mutex.release();
+                mainWritersQueue.acquire();
+            }
+            else {
+                mutex.release();
+                myDimension.waitingQueue.acquire();
             }
             --myDimension.waitingCount;
-            --writersGettingReady;
-            ++writersCounter;
-            currentDimension = parameteres.side;
+        }
 
-            if (myDimension.waitingCount > 0) {
-                myDimension.waitingQueue.release();
+        currentDimension = parameteres.side;
+        --waitingWritersCounter;
+        ++writersCounter;
+        if (myDimension.waitingCount > 0) {
+            myDimension.waitingQueue.release();
+        }
+        else {
+            mutex.release();
+        }
+
+        myDimension.blocked[parameteres.layer].acquire();
+
+        // Critical section
+        beforeRotation.accept(side, layer);
+        rotateAux(Field.getFieldType(side), layer);
+        afterRotation.accept(side, layer);
+
+        myDimension.blocked[parameteres.layer].release();
+        mutex.acquireUninterruptibly();
+
+        --writersCounter;
+        if (writersCounter == 0) {
+            currentDimension = null;
+            if (waitingReadersCounter > 0) {
+                readersQueue.release();
+            }
+            else if (waitingWritersCounter > 0) {
+                mainWritersQueue.release();
             }
             else {
                 mutex.release();
             }
         }
         else {
-            --writersGettingReady;
-            ++writersCounter;
-            currentDimension = parameteres.side;
-
             mutex.release();
         }
-
-        try {
-            myDimension.blocked[parameteres.layer].acquire();
-        } catch (InterruptedException e) {
-            mutex.acquireUninterruptibly();
-            --writersCounter;
-            mutex.release();
-            throw e;
-        }
-
-
-        // Critical section -- writing
-        if (!Thread.interrupted()) {
-            beforeRotation.accept(side, layer);
-            rotateAux(Field.getFieldType(side), layer);
-            afterRotation.accept(side, layer);
-        }
-
-
-        mutex.acquireUninterruptibly();
-        --writersCounter;
-        myDimension.blocked[parameteres.layer].release();
-
-        // Waking up threads that are getting ready for writing.
-        // If there are none, readers are woken up.
-        // If there aren't any readers either, mutex is relased
-        if (writersCounter == 0) {
-            currentDimension = null;
-            int dimensionIndex = parameteres.side.getVal();
-            boolean releaseMutex = true;
-
-            for (int i = 1; i <= dimensions.size() - 1; ++i) {
-                Dimension dim = dimensions.get(Field.getFieldType((dimensionIndex + i) % dimensions.size()));
-                if (dim.waitingCount > 0) {
-                    releaseMutex = false;
-                    dim.waitingQueue.release();
-                    break;
-                }
-            }
-
-            if (releaseMutex) {
-                if (waitingReadersCounter > 0) {
-                    readersQueue.release();
-                }
-                else {
-                    if (waitingWritersCounter > 0) {
-                        writersQueue.release();
-                    }
-                    mutex.release();
-                }
-            }
-        }
-        else {
-            mutex.release();
-        }
-
-        if (Thread.interrupted()) {
-            throw new InterruptedException();
-        }
-
     }
 
     private String readCube() {
@@ -503,31 +390,34 @@ public class Cube {
     // Reader
     public String show() throws InterruptedException {
 
-        // Waiting till the writers finish writing
         mutex.acquireUninterruptibly();
-        if (writersCounter > 0 || waitingWritersCounter > 0 || writersGettingReady > 0) {
-            ++waitingReadersCounter;
+        ++waitingReadersCounter;
+        if (writersCounter > 0 || waitingWritersCounter > 0) {
             mutex.release();
+            readersQueue.acquire();
+        }
 
-            try {
-                readersQueue.acquire();
-            } catch (InterruptedException e) {
-                --waitingReadersCounter;
-                if (waitingReadersCounter > 0) {
-                    readersQueue.release();
-                }
-                else if (waitingWritersCounter > 0) {
-                    writersQueue.release();
-                }
-                else {
-                    mutex.release();
-                }
-                throw e;
+        --waitingReadersCounter;
+        ++readersCounter;
+        if (waitingReadersCounter > 0) {
+            readersQueue.release();
+        }
+        else {
+            mutex.release();
+        }
+
+        // Critical section
+        beforeShowing.run();
+        String result = readCube();
+        afterShowing.run();
+
+        mutex.acquireUninterruptibly();
+        --readersCounter;
+        if (readersCounter == 0) {
+            if (waitingWritersCounter > 0) {
+                mainWritersQueue.release();
             }
-
-            --waitingReadersCounter;
-            ++readersCounter;
-            if (waitingReadersCounter > 0) {
+            else if (waitingReadersCounter > 0) {
                 readersQueue.release();
             }
             else {
@@ -535,35 +425,7 @@ public class Cube {
             }
         }
         else {
-            ++readersCounter;
             mutex.release();
-        }
-
-
-        // Critical section -- reading
-        String result = "";
-        if (!Thread.interrupted()) {
-            beforeShowing.run();
-            result = readCube();
-            afterShowing.run();
-        }
-
-
-        mutex.acquireUninterruptibly();
-        --readersCounter;
-
-        // If there are any writers waiting for writing -- wakes them up
-        // In any case, mutex is released. The reason is there might be multiple
-        // writers waiting at the semaphore and they must come in order.
-        // It is possible not to release the mutex here, but it would overcomplicate
-        // the writers' code
-        if (readersCounter == 0 && waitingWritersCounter > 0) {
-            writersQueue.release();
-        }
-        mutex.release();
-
-        if (Thread.interrupted()) {
-            throw new InterruptedException();
         }
 
         return result;
