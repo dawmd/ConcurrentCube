@@ -15,5 +15,7 @@ The `i`-th layer looking from side `X`'s perspective is the fields in the `i`-th
 
 ![Representation of a layer](https://github.com/dawmd/ConcurrentCube/blob/master/CUBE.png?raw=true)
 
+The blue-ish side is the front side. The highlighted (dark red) fields are the `i`-th layer from the perspective of the front side.
+
 ### TODO
 * Take care of `InterruptedException`s.
